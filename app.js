@@ -64,6 +64,48 @@ const defaultState = {
   ]
 };
 
+const supplementalProducts = [
+  { name: "桃", specs: ["2kg箱", "5kg箱", "贈答用"], price: 6200, cost: 3900 },
+  { name: "梨", specs: ["5kg箱", "10kg箱", "贈答用"], price: 5600, cost: 3500 },
+  { name: "柿", specs: ["3kg箱", "5kg箱", "干し柿用"], price: 4200, cost: 2500 },
+  { name: "メロン", specs: ["1玉箱", "2玉箱", "高糖度"], price: 4800, cost: 3000 },
+  { name: "スイカ", specs: ["1玉", "2玉箱", "小玉"], price: 3600, cost: 2200 },
+  { name: "とうもろこし", specs: ["10本箱", "20本箱", "訳あり"], price: 3200, cost: 1900 },
+  { name: "枝豆", specs: ["500g袋", "1kg袋", "業務用"], price: 1400, cost: 780 },
+  { name: "大根", specs: ["5本箱", "10本箱", "業務用"], price: 2100, cost: 1200 },
+  { name: "にんじん", specs: ["5kg箱", "10kg箱", "洗い"], price: 2400, cost: 1400 },
+  { name: "長ねぎ", specs: ["3kg箱", "5kg箱", "業務用"], price: 2600, cost: 1500 },
+  { name: "しいたけ", specs: ["500g箱", "1kg箱", "乾燥"], price: 1900, cost: 980 },
+  { name: "卵", specs: ["10個パック", "30個箱", "業務用"], price: 520, cost: 320 },
+  { name: "牛乳", specs: ["1L", "6本箱", "低温殺菌"], price: 420, cost: 260 },
+  { name: "チーズ", specs: ["100g", "500g", "ギフト"], price: 980, cost: 560 },
+  { name: "ジャム", specs: ["150g瓶", "300g瓶", "ギフト箱"], price: 980, cost: 520 },
+  { name: "ジュース", specs: ["720ml瓶", "1L瓶", "6本箱"], price: 1500, cost: 850 },
+  { name: "米粉", specs: ["500g袋", "1kg袋", "業務用"], price: 760, cost: 420 },
+  { name: "豆腐", specs: ["単品", "6個箱", "業務用"], price: 360, cost: 190 },
+  { name: "醤油", specs: ["500ml", "1L", "ギフト"], price: 880, cost: 470 },
+  { name: "乾麺", specs: ["200g袋", "1kg箱", "ギフト"], price: 620, cost: 330 }
+];
+
+const supplementalAdjustments = [
+  { name: "TikTok Shop成約手数料", type: "fee", method: "rate", value: 6, formula: "revenue * 0.06" },
+  { name: "決済代行手数料", type: "fee", method: "rate", value: 3.6, formula: "revenue * 0.036" },
+  { name: "アフィリエイト料", type: "fee", method: "rate", value: 8, formula: "revenue * 0.08" },
+  { name: "ライブ販売委託料", type: "fee", method: "rate", value: 10, formula: "revenue * 0.10" },
+  { name: "広告配信費", type: "fee", method: "amount", value: 10000, formula: "10000" },
+  { name: "常温送料", type: "fee", method: "perUnit", value: 850, formula: "qty * 850" },
+  { name: "クール便追加費", type: "fee", method: "perUnit", value: 330, formula: "qty * 330" },
+  { name: "梱包資材費", type: "fee", method: "perUnit", value: 120, formula: "qty * 120" },
+  { name: "倉庫出荷作業費", type: "fee", method: "perUnit", value: 180, formula: "qty * 180" },
+  { name: "返品・破損引当", type: "fee", method: "rate", value: 2, formula: "revenue * 0.02" },
+  { name: "振込手数料", type: "fee", method: "amount", value: 440, formula: "440" },
+  { name: "地域産品販促補助", type: "subsidy", method: "rate", value: 5, formula: "revenue * 0.05" },
+  { name: "送料補助", type: "subsidy", method: "perUnit", value: 300, formula: "qty * 300" },
+  { name: "自治体EC販促補助", type: "subsidy", method: "amount", value: 5000, formula: "5000" },
+  { name: "メーカー協賛金", type: "subsidy", method: "amount", value: 3000, formula: "3000" },
+  { name: "初回ライブ支援金", type: "subsidy", method: "amount", value: 10000, formula: "10000" }
+];
+
 let state = loadState();
 let current = clone(getTemplate(state.selectedTemplateId) || state.templates[0]);
 
@@ -74,6 +116,7 @@ const els = {
   subsidyList: document.getElementById("subsidyList"),
   summaryRows: document.getElementById("summaryRows"),
   quoteDoc: document.getElementById("quoteDoc"),
+  quoteLockToggle: document.getElementById("quoteLockToggle"),
   masterProducts: document.getElementById("masterProducts"),
   masterAdjustments: document.getElementById("masterAdjustments")
 };
@@ -81,13 +124,42 @@ const els = {
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved?.templates?.length) return saved;
+    if (saved && saved.templates && saved.templates.length) return normalizeState(saved);
   } catch {}
-  return clone(defaultState);
+  return normalizeState(clone(defaultState));
 }
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeState(nextState) {
+  if (!nextState.masters) nextState.masters = { products: [], adjustments: [] };
+  if (!nextState.masters.products) nextState.masters.products = [];
+  if (!nextState.masters.adjustments) nextState.masters.adjustments = [];
+  mergeByName(nextState.masters.products, supplementalProducts);
+  mergeByName(nextState.masters.adjustments, supplementalAdjustments);
+  if (!nextState.templates) nextState.templates = clone(defaultState.templates);
+  const standard = nextState.templates.find((template) => template.id === "standard");
+  if (standard) {
+    if (!standard.fees) standard.fees = [];
+    if (!standard.subsidies) standard.subsidies = [];
+    mergeByName(standard.fees, supplementalAdjustments.filter((item) => item.type === "fee").slice(0, 9).map(stripType));
+    mergeByName(standard.subsidies, supplementalAdjustments.filter((item) => item.type === "subsidy").map(stripType));
+  }
+  return nextState;
+}
+
+function mergeByName(target, additions) {
+  additions.forEach((item) => {
+    if (!target.some((existing) => existing.name === item.name)) target.push(clone(item));
+  });
+}
+
+function stripType(item) {
+  const copy = clone(item);
+  delete copy.type;
+  return copy;
 }
 
 function persist() {
@@ -167,12 +239,14 @@ function renderTemplateSelect() {
 }
 
 function productOptions(selected) {
+  if (!state.masters.products.length) return `<option value="Custom"${selected === "Custom" ? " selected" : ""}>Custom</option>`;
   return state.masters.products.map((product) => `<option value="${escapeAttr(product.name)}"${product.name === selected ? " selected" : ""}>${escapeHtml(product.name)}</option>`).join("");
 }
 
 function specOptions(productName, selected) {
   const product = state.masters.products.find((item) => item.name === productName) || state.masters.products[0];
-  return product.specs.map((spec) => `<option value="${escapeAttr(spec)}"${spec === selected ? " selected" : ""}>${escapeHtml(spec)}</option>`).join("");
+  const specs = product && product.specs && product.specs.length ? product.specs : [selected || "標準"];
+  return specs.map((spec) => `<option value="${escapeAttr(spec)}"${spec === selected ? " selected" : ""}>${escapeHtml(spec)}</option>`).join("");
 }
 
 function renderProducts() {
@@ -190,10 +264,11 @@ function renderProducts() {
     };
     node.querySelector(".product-name").onchange = (event) => {
       const master = state.masters.products.find((item) => item.name === event.target.value);
+      if (!master) return;
       current.products[index] = {
         ...current.products[index],
         name: master.name,
-        spec: master.specs[0],
+        spec: master.specs[0] || "標準",
         price: master.price,
         cost: master.cost
       };
@@ -264,7 +339,13 @@ function renderResults() {
 }
 
 function renderQuote(result) {
+  if (current.quoteLocked && current.quoteHtml) {
+    if (els.quoteDoc.innerHTML !== current.quoteHtml) els.quoteDoc.innerHTML = current.quoteHtml;
+    els.quoteLockToggle.checked = true;
+    return;
+  }
   if (document.activeElement === els.quoteDoc) return;
+  els.quoteLockToggle.checked = false;
   const quoteScope = { ...result, subtotal: result.revenue };
   const feeRows = current.fees.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>-${money(adjustmentAmount(item, quoteScope))}</td></tr>`).join("");
   const subsidyRows = current.subsidies.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>${money(adjustmentAmount(item, quoteScope))}</td></tr>`).join("");
@@ -300,6 +381,7 @@ function renderQuote(result) {
     </table>
     <p>備考: 価格、手数料、補助条件はライブ販売条件と実績により調整可能です。</p>
   `;
+  current.quoteHtml = els.quoteDoc.innerHTML;
 }
 
 function methodLabel(item) {
@@ -342,7 +424,7 @@ function renderAll() {
 }
 
 function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+  return String(value == null ? "" : value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
 }
 
 function escapeAttr(value) {
@@ -351,13 +433,24 @@ function escapeAttr(value) {
 
 function addProduct() {
   const master = state.masters.products[0];
-  current.products.push({ name: master.name, spec: master.specs[0], qty: 1, price: master.price, cost: master.cost });
+  current.products.push({
+    name: master ? master.name : "Custom",
+    spec: master && master.specs && master.specs[0] ? master.specs[0] : "標準",
+    qty: 1,
+    price: master ? master.price : 0,
+    cost: master ? master.cost : 0
+  });
   renderAll();
 }
 
 function addAdjustment(list, type) {
   const master = state.masters.adjustments.find((item) => item.type === type);
-  list.push({ name: master?.name || "新規項目", method: master?.method || "amount", value: master?.value || 0, formula: master?.formula || "0" });
+  list.push({
+    name: master ? master.name : "新規項目",
+    method: master ? master.method : "amount",
+    value: master ? master.value : 0,
+    formula: master ? master.formula : "0"
+  });
   renderAll();
 }
 
@@ -383,6 +476,22 @@ function bindEvents() {
   document.getElementById("addFeeBtn").onclick = () => addAdjustment(current.fees, "fee");
   document.getElementById("addSubsidyBtn").onclick = () => addAdjustment(current.subsidies, "subsidy");
   document.getElementById("saveTemplateBtn").onclick = saveTemplate;
+  els.quoteDoc.addEventListener("input", () => {
+    current.quoteLocked = true;
+    current.quoteHtml = els.quoteDoc.innerHTML;
+    els.quoteLockToggle.checked = true;
+  });
+  els.quoteLockToggle.addEventListener("change", () => {
+    current.quoteLocked = els.quoteLockToggle.checked;
+    if (current.quoteLocked) current.quoteHtml = els.quoteDoc.innerHTML;
+    renderResults();
+  });
+  document.getElementById("regenerateQuoteBtn").onclick = () => {
+    current.quoteLocked = false;
+    current.quoteHtml = "";
+    els.quoteLockToggle.checked = false;
+    renderResults();
+  };
   document.getElementById("exportPdfBtn").onclick = () => {
     document.querySelector('[data-tab="quote"]').click();
     setTimeout(() => window.print(), 100);
@@ -446,11 +555,13 @@ function bindEvents() {
     const productIndex = event.target.dataset.removeMasterProduct;
     const adjustmentIndex = event.target.dataset.removeMasterAdjustment;
     if (productIndex !== undefined) {
+      if (state.masters.products.length <= 1) return alert("商品マスターは最低1件必要です。");
       state.masters.products.splice(productIndex, 1);
       persist();
       renderAll();
     }
     if (adjustmentIndex !== undefined) {
+      if (state.masters.adjustments.length <= 1) return alert("控除・補助マスターは最低1件必要です。");
       state.masters.adjustments.splice(adjustmentIndex, 1);
       persist();
       renderAll();

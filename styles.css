@@ -285,6 +285,36 @@ th:nth-child(2), td:nth-child(2) {
   overflow-x: auto;
 }
 
+.quote-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.inline-toggle {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.inline-toggle input {
+  width: 18px;
+  min-height: 18px;
+}
+
+#pdfHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  flex: 1 1 220px;
+}
+
 .quote-doc h2 {
   text-align: center;
   font-size: 26px;
@@ -390,7 +420,7 @@ th:nth-child(2), td:nth-child(2) {
     background: #fff;
   }
 
-  .app-header, .controls-panel, .tabs, #summaryTab, #mastersTab {
+  .app-header, .controls-panel, .tabs, #summaryTab, #mastersTab, .quote-toolbar {
     display: none !important;
   }
 
