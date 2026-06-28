@@ -355,6 +355,7 @@ function renderResults() {
   document.getElementById("previewProfit").textContent = money(result.netProfit);
   document.getElementById("previewMargin").textContent = `${result.margin.toFixed(1)}%`;
   document.getElementById("previewProductCount").textContent = String(result.products.length);
+  document.getElementById("previewQty").textContent = String(result.qty);
   renderTopPreviewRows(result);
   els.summaryRows.innerHTML = result.products.map((product) => `
     <tr>
