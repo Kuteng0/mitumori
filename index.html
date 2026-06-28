@@ -30,7 +30,7 @@
           <div><span>売上</span><strong id="previewRevenue">¥0</strong></div>
           <div><span>進貨合計</span><strong id="previewCost">¥0</strong></div>
           <div><span>扣除合計</span><strong id="previewFees">¥0</strong></div>
-          <div><span>補助合計</span><strong id="previewSubsidies">¥0</strong></div>
+          <div id="previewSubsidyTotal" class="optional-subsidy"><span>補助合計</span><strong id="previewSubsidies">¥0</strong></div>
           <div><span>利益率</span><strong id="previewMargin">0%</strong></div>
           <div><span>商品数</span><strong id="previewProductCount">0</strong></div>
           <div><span>総数量</span><strong id="previewQty">0</strong></div>
@@ -40,12 +40,41 @@
         <span>商品別明細</span>
         <small>商品ごとの進貨、費用按分、售价、利益</small>
       </div>
+      <div class="preview-row preview-header">
+        <div>商品</div>
+        <div>数量</div>
+        <div>進貨単価</div>
+        <div>進貨合計</div>
+        <div>售价</div>
+        <div>売上</div>
+        <div>扣除</div>
+        <div class="optional-subsidy">補助</div>
+        <div>利益</div>
+        <div>利益率</div>
+      </div>
       <div id="previewRows" class="preview-rows"></div>
       <div class="preview-detail-head">
         <span>扣除项目明细</span>
         <small>运费、包装耗损、平台手续费等</small>
       </div>
+      <div class="preview-row preview-header preview-fee-row">
+        <div>扣除项目</div>
+        <div>计算方式</div>
+        <div>金额</div>
+      </div>
       <div id="previewFeeRows" class="preview-rows preview-fee-rows"></div>
+      <div id="previewSubsidyBlock" class="optional-subsidy">
+        <div class="preview-detail-head">
+          <span>補助项目明细</span>
+          <small>用户添加补助后显示</small>
+        </div>
+        <div class="preview-row preview-header preview-fee-row">
+          <div>補助项目</div>
+          <div>计算方式</div>
+          <div>金额</div>
+        </div>
+        <div id="previewSubsidyRows" class="preview-rows preview-fee-rows"></div>
+      </div>
     </section>
 
     <main class="app-shell">
@@ -160,7 +189,7 @@
             <div class="kpi"><span>売上</span><strong id="kpiRevenue">¥0</strong></div>
             <div class="kpi"><span>原価</span><strong id="kpiCost">¥0</strong></div>
             <div class="kpi"><span>控除</span><strong id="kpiFees">¥0</strong></div>
-            <div class="kpi"><span>補助</span><strong id="kpiSubsidies">¥0</strong></div>
+            <div class="kpi optional-subsidy"><span>補助</span><strong id="kpiSubsidies">¥0</strong></div>
             <div class="kpi highlight"><span>利益</span><strong id="kpiProfit">¥0</strong></div>
             <div class="kpi"><span>利益率</span><strong id="kpiMargin">0%</strong></div>
           </div>

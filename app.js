@@ -125,6 +125,9 @@ const els = {
   adjustmentRows: document.getElementById("adjustmentRows"),
   previewRows: document.getElementById("previewRows"),
   previewFeeRows: document.getElementById("previewFeeRows"),
+  previewSubsidyRows: document.getElementById("previewSubsidyRows"),
+  previewSubsidyBlock: document.getElementById("previewSubsidyBlock"),
+  previewSubsidyTotal: document.getElementById("previewSubsidyTotal"),
   quoteDoc: document.getElementById("quoteDoc"),
   quoteLockToggle: document.getElementById("quoteLockToggle"),
   masterProducts: document.getElementById("masterProducts"),
@@ -384,6 +387,11 @@ function renderResults() {
 }
 
 function renderTopPreviewRows(result) {
+  const hasSubsidies = result.subsidyDetails.length > 0;
+  document.querySelector(".top-preview").classList.toggle("has-subsidies", hasSubsidies);
+  document.querySelectorAll(".optional-subsidy").forEach((element) => {
+    element.hidden = !hasSubsidies;
+  });
   els.previewRows.innerHTML = result.products.map((product) => {
     const share = result.revenue ? product.subtotal / result.revenue : 0;
     const allocatedFees = result.fees * share;
@@ -403,7 +411,7 @@ function renderTopPreviewRows(result) {
         <div data-label="售价"><span>售价</span><strong>${money(product.price)}</strong></div>
         <div data-label="売上"><span>売上</span><strong>${money(product.subtotal)}</strong></div>
         <div data-label="扣除"><span>扣除</span><strong>-${money(allocatedFees)}</strong></div>
-        <div data-label="補助"><span>補助</span><strong>${money(allocatedSubsidies)}</strong></div>
+        ${hasSubsidies ? `<div class="optional-subsidy" data-label="補助"><span>補助</span><strong>${money(allocatedSubsidies)}</strong></div>` : ""}
         <div data-label="利益"><span>利益</span><strong>${money(profit)}</strong></div>
         <div data-label="利益率"><span>利益率</span><strong>${margin.toFixed(1)}%</strong></div>
       </div>
@@ -416,6 +424,13 @@ function renderTopPreviewRows(result) {
       <div data-label="金额"><span>金额</span><strong>-${money(item.amount)}</strong></div>
     </div>
   `).join("") || `<div class="preview-row preview-fee-row"><div data-label="扣除项目"><span>扣除项目</span><strong>なし</strong></div></div>`;
+  els.previewSubsidyRows.innerHTML = result.subsidyDetails.map((item) => `
+    <div class="preview-row preview-fee-row">
+      <div data-label="補助项目"><span>補助项目</span><strong>${escapeHtml(item.name)}</strong></div>
+      <div data-label="计算方式"><span>计算方式</span><strong>${escapeHtml(methodLabel(item))}</strong></div>
+      <div data-label="金额"><span>金额</span><strong>${money(item.amount)}</strong></div>
+    </div>
+  `).join("");
 }
 
 function renderQuote(result) {
