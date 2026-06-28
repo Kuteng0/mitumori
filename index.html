@@ -51,6 +51,30 @@
             <input id="issuerName" autocomplete="organization" />
           </label>
           <label>
+            件名
+            <input id="quoteTitle" autocomplete="off" />
+          </label>
+          <label>
+            有効期限
+            <input id="validUntil" type="date" />
+          </label>
+          <label>
+            支払条件
+            <input id="paymentTerms" autocomplete="off" />
+          </label>
+          <label>
+            納品条件
+            <input id="deliveryTerms" autocomplete="off" />
+          </label>
+          <label>
+            自社住所・連絡先
+            <input id="issuerContact" autocomplete="off" />
+          </label>
+          <label>
+            備考
+            <input id="quoteNotes" autocomplete="off" />
+          </label>
+          <label>
             通貨
             <select id="currency">
               <option value="JPY">JPY</option>
@@ -124,6 +148,22 @@
                 </tr>
               </thead>
               <tbody id="summaryRows"></tbody>
+            </table>
+          </div>
+          <div class="section-head detail-head">
+            <h3>控除・補助明細</h3>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>区分</th>
+                  <th>項目</th>
+                  <th>方式</th>
+                  <th>金額</th>
+                </tr>
+              </thead>
+              <tbody id="adjustmentRows"></tbody>
             </table>
           </div>
         </div>

@@ -42,6 +42,12 @@ const defaultState = {
       quoteDate: "",
       clientName: "B商 御中",
       issuerName: "農産品サプライヤー",
+      quoteTitle: "TikTokライブ販売向け農産品供給見積",
+      validUntil: "",
+      paymentTerms: "月末締め翌月末払い",
+      deliveryTerms: "国内指定倉庫またはB商指定住所納品",
+      issuerContact: "住所・電話・メールを入力",
+      quoteNotes: "価格、手数料、補助条件はライブ販売条件と実績により調整可能です。",
       currency: "JPY",
       taxRate: 10,
       productProfitFormula: "subtotal - cost",
@@ -115,6 +121,7 @@ const els = {
   feeList: document.getElementById("feeList"),
   subsidyList: document.getElementById("subsidyList"),
   summaryRows: document.getElementById("summaryRows"),
+  adjustmentRows: document.getElementById("adjustmentRows"),
   quoteDoc: document.getElementById("quoteDoc"),
   quoteLockToggle: document.getElementById("quoteLockToggle"),
   masterProducts: document.getElementById("masterProducts"),
@@ -140,6 +147,9 @@ function normalizeState(nextState) {
   mergeByName(nextState.masters.products, supplementalProducts);
   mergeByName(nextState.masters.adjustments, supplementalAdjustments);
   if (!nextState.templates) nextState.templates = clone(defaultState.templates);
+  nextState.templates.forEach((template) => {
+    fillMissingQuoteFields(template);
+  });
   const standard = nextState.templates.find((template) => template.id === "standard");
   if (standard) {
     if (!standard.fees) standard.fees = [];
@@ -148,6 +158,13 @@ function normalizeState(nextState) {
     mergeByName(standard.subsidies, supplementalAdjustments.filter((item) => item.type === "subsidy").map(stripType));
   }
   return nextState;
+}
+
+function fillMissingQuoteFields(template) {
+  const defaults = defaultState.templates[0];
+  ["quoteTitle", "validUntil", "paymentTerms", "deliveryTerms", "issuerContact", "quoteNotes", "taxRate", "productProfitFormula", "netProfitFormula"].forEach((field) => {
+    if (template[field] === undefined || template[field] === null) template[field] = defaults[field] || "";
+  });
 }
 
 function mergeByName(target, additions) {
@@ -211,23 +228,25 @@ function calculate() {
   const cost = products.reduce((sum, product) => sum + product.cost, 0);
   const qty = products.reduce((sum, product) => sum + product.qty, 0);
   const baseScope = { subtotal: revenue, revenue, cost, qty, fees: 0, subsidies: 0, tax: 0 };
-  const fees = current.fees.reduce((sum, item) => sum + adjustmentAmount(item, baseScope), 0);
-  const subsidies = current.subsidies.reduce((sum, item) => sum + adjustmentAmount(item, { ...baseScope, fees }), 0);
+  const feeDetails = current.fees.map((item) => ({ ...item, amount: adjustmentAmount(item, baseScope) }));
+  const fees = feeDetails.reduce((sum, item) => sum + item.amount, 0);
+  const subsidyDetails = current.subsidies.map((item) => ({ ...item, amount: adjustmentAmount(item, { ...baseScope, fees }) }));
+  const subsidies = subsidyDetails.reduce((sum, item) => sum + item.amount, 0);
   const taxable = Math.max(0, revenue - fees + subsidies);
   const tax = taxable * number(current.taxRate) / 100;
   const netProfit = safeFormula(current.netProfitFormula, { ...baseScope, fees, subsidies, tax });
-  return { products, revenue, cost, qty, fees, subsidies, tax, netProfit, margin: revenue ? netProfit / revenue * 100 : 0 };
+  return { products, feeDetails, subsidyDetails, revenue, cost, qty, fees, subsidies, tax, netProfit, margin: revenue ? netProfit / revenue * 100 : 0 };
 }
 
 function syncInputsFromCurrent() {
-  ["quoteNo", "quoteDate", "clientName", "issuerName", "currency", "taxRate", "productProfitFormula", "netProfitFormula"].forEach((id) => {
+  ["quoteNo", "quoteDate", "clientName", "issuerName", "quoteTitle", "validUntil", "paymentTerms", "deliveryTerms", "issuerContact", "quoteNotes", "currency", "taxRate", "productProfitFormula", "netProfitFormula"].forEach((id) => {
     const element = document.getElementById(id);
     element.value = current[id] || "";
   });
 }
 
 function syncCurrentFromInputs() {
-  ["quoteNo", "quoteDate", "clientName", "issuerName", "currency", "productProfitFormula", "netProfitFormula"].forEach((id) => {
+  ["quoteNo", "quoteDate", "clientName", "issuerName", "quoteTitle", "validUntil", "paymentTerms", "deliveryTerms", "issuerContact", "quoteNotes", "currency", "productProfitFormula", "netProfitFormula"].forEach((id) => {
     current[id] = document.getElementById(id).value;
   });
   current.taxRate = number(document.getElementById("taxRate").value);
@@ -335,6 +354,17 @@ function renderResults() {
       <td>${money(product.profit)}</td>
     </tr>
   `).join("");
+  els.adjustmentRows.innerHTML = [
+    ...result.feeDetails.map((item) => ({ ...item, typeLabel: "控除", signedAmount: -item.amount })),
+    ...result.subsidyDetails.map((item) => ({ ...item, typeLabel: "補助", signedAmount: item.amount }))
+  ].map((item) => `
+    <tr>
+      <td>${escapeHtml(item.typeLabel)}</td>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(methodLabel(item))}</td>
+      <td>${money(item.signedAmount)}</td>
+    </tr>
+  `).join("");
   renderQuote(result);
 }
 
@@ -346,20 +376,22 @@ function renderQuote(result) {
   }
   if (document.activeElement === els.quoteDoc) return;
   els.quoteLockToggle.checked = false;
-  const quoteScope = { ...result, subtotal: result.revenue };
-  const feeRows = current.fees.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>-${money(adjustmentAmount(item, quoteScope))}</td></tr>`).join("");
-  const subsidyRows = current.subsidies.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>${money(adjustmentAmount(item, quoteScope))}</td></tr>`).join("");
+  const feeRows = result.feeDetails.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>-${money(item.amount)}</td></tr>`).join("");
+  const subsidyRows = result.subsidyDetails.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>${money(item.amount)}</td></tr>`).join("");
   els.quoteDoc.innerHTML = `
     <h2>見積書</h2>
     <div class="quote-meta">
       <div>
         <p><strong>${escapeHtml(current.clientName || "")}</strong></p>
         <p>下記の通りお見積り申し上げます。</p>
+        <p>件名: ${escapeHtml(current.quoteTitle || "")}</p>
       </div>
       <div>
         <p>見積番号: ${escapeHtml(current.quoteNo || "")}</p>
         <p>発行日: ${escapeHtml(current.quoteDate || "")}</p>
+        <p>有効期限: ${escapeHtml(current.validUntil || "")}</p>
         <p>${escapeHtml(current.issuerName || "")}</p>
+        <p>${escapeHtml(current.issuerContact || "")}</p>
       </div>
     </div>
     <table>
@@ -370,6 +402,10 @@ function renderQuote(result) {
         ${subsidyRows}
       </tbody>
     </table>
+    <div class="quote-terms">
+      <p><strong>支払条件:</strong> ${escapeHtml(current.paymentTerms || "")}</p>
+      <p><strong>納品条件:</strong> ${escapeHtml(current.deliveryTerms || "")}</p>
+    </div>
     <table class="quote-total">
       <tbody>
         <tr><th>売上小計</th><td>${money(result.revenue)}</td></tr>
@@ -379,7 +415,7 @@ function renderQuote(result) {
         <tr><th>B商見込利益</th><td><strong>${money(result.netProfit)}</strong></td></tr>
       </tbody>
     </table>
-    <p>備考: 価格、手数料、補助条件はライブ販売条件と実績により調整可能です。</p>
+    <p>備考: ${escapeHtml(current.quoteNotes || "")}</p>
   `;
   current.quoteHtml = els.quoteDoc.innerHTML;
 }
@@ -454,6 +490,20 @@ function addAdjustment(list, type) {
   renderAll();
 }
 
+function validateQuoteBeforeExport() {
+  syncCurrentFromInputs();
+  const missing = [];
+  if (!current.products.length) missing.push("商品");
+  if (!current.quoteNo) missing.push("見積番号");
+  if (!current.clientName) missing.push("宛先");
+  if (!current.issuerName) missing.push("自社名");
+  if (missing.length) {
+    alert(`PDF出力前に未入力項目を確認してください: ${missing.join("、")}`);
+    return false;
+  }
+  return true;
+}
+
 function saveTemplate() {
   syncCurrentFromInputs();
   const name = prompt("テンプレート名", current.name || "新規テンプレート");
@@ -469,7 +519,7 @@ function saveTemplate() {
 }
 
 function bindEvents() {
-  document.querySelectorAll("#quoteNo,#quoteDate,#clientName,#issuerName,#currency,#taxRate,#productProfitFormula,#netProfitFormula").forEach((input) => {
+  document.querySelectorAll("#quoteNo,#quoteDate,#clientName,#issuerName,#quoteTitle,#validUntil,#paymentTerms,#deliveryTerms,#issuerContact,#quoteNotes,#currency,#taxRate,#productProfitFormula,#netProfitFormula").forEach((input) => {
     input.addEventListener("input", renderResults);
   });
   document.getElementById("addProductBtn").onclick = addProduct;
@@ -493,6 +543,7 @@ function bindEvents() {
     renderResults();
   };
   document.getElementById("exportPdfBtn").onclick = () => {
+    if (!validateQuoteBeforeExport()) return;
     document.querySelector('[data-tab="quote"]').click();
     setTimeout(() => window.print(), 100);
   };
