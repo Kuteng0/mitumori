@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f4ec" />
+    <title>農産品TikTok販売 利益見積計算</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Japan TikTok Live Commerce</p>
+        <h1>農産品利益・見積計算</h1>
+      </div>
+      <div class="header-actions">
+        <button id="saveTemplateBtn" class="primary">テンプレート保存</button>
+        <button id="exportPdfBtn" class="secondary">PDF出力</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="panel controls-panel" aria-label="計算条件">
+        <div class="panel-title">
+          <h2>計算条件</h2>
+          <select id="templateSelect" aria-label="テンプレート選択"></select>
+        </div>
+
+        <div class="template-actions">
+          <button id="loadTemplateBtn">適用</button>
+          <button id="duplicateTemplateBtn">複製</button>
+          <button id="deleteTemplateBtn" class="danger">削除</button>
+        </div>
+
+        <div class="grid two">
+          <label>
+            見積番号
+            <input id="quoteNo" autocomplete="off" />
+          </label>
+          <label>
+            発行日
+            <input id="quoteDate" type="date" />
+          </label>
+          <label>
+            宛先 B商
+            <input id="clientName" autocomplete="organization" />
+          </label>
+          <label>
+            自社名
+            <input id="issuerName" autocomplete="organization" />
+          </label>
+          <label>
+            通貨
+            <select id="currency">
+              <option value="JPY">JPY</option>
+              <option value="USD">USD</option>
+              <option value="CNY">CNY</option>
+            </select>
+          </label>
+          <label>
+            消費税率
+            <input id="taxRate" type="number" inputmode="decimal" min="0" step="0.1" />
+          </label>
+        </div>
+
+        <div class="section-head">
+          <h3>商品</h3>
+          <button id="addProductBtn">商品追加</button>
+        </div>
+        <div id="productList" class="stack"></div>
+
+        <div class="section-head">
+          <h3>控除費用</h3>
+          <button id="addFeeBtn">費用追加</button>
+        </div>
+        <div id="feeList" class="stack compact"></div>
+
+        <div class="section-head">
+          <h3>補助・協賛</h3>
+          <button id="addSubsidyBtn">補助追加</button>
+        </div>
+        <div id="subsidyList" class="stack compact"></div>
+
+        <details class="formula-box">
+          <summary>計算式を編集</summary>
+          <p>利用可能: <code>subtotal</code>, <code>cost</code>, <code>qty</code>, <code>revenue</code>, <code>fees</code>, <code>subsidies</code>, <code>tax</code></p>
+          <label>
+            商品粗利式
+            <input id="productProfitFormula" />
+          </label>
+          <label>
+            最終利益式
+            <input id="netProfitFormula" />
+          </label>
+        </details>
+      </section>
+
+      <section class="panel result-panel" aria-label="計算結果と見積書">
+        <nav class="tabs" aria-label="表示切替">
+          <button class="tab active" data-tab="summary">利益</button>
+          <button class="tab" data-tab="quote">見積書</button>
+          <button class="tab" data-tab="masters">選択肢</button>
+        </nav>
+
+        <div id="summaryTab" class="tab-view active">
+          <div class="kpi-grid">
+            <div class="kpi"><span>売上</span><strong id="kpiRevenue">¥0</strong></div>
+            <div class="kpi"><span>原価</span><strong id="kpiCost">¥0</strong></div>
+            <div class="kpi"><span>控除</span><strong id="kpiFees">¥0</strong></div>
+            <div class="kpi"><span>補助</span><strong id="kpiSubsidies">¥0</strong></div>
+            <div class="kpi highlight"><span>B商利益</span><strong id="kpiProfit">¥0</strong></div>
+            <div class="kpi"><span>利益率</span><strong id="kpiMargin">0%</strong></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>商品</th>
+                  <th>規格</th>
+                  <th>数量</th>
+                  <th>売上</th>
+                  <th>粗利</th>
+                </tr>
+              </thead>
+              <tbody id="summaryRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="quoteTab" class="tab-view">
+          <article id="quoteDoc" class="quote-doc" contenteditable="true" spellcheck="false"></article>
+        </div>
+
+        <div id="mastersTab" class="tab-view">
+          <div class="section-head">
+            <h3>商品・規格マスター</h3>
+            <button id="addMasterProductBtn">追加</button>
+          </div>
+          <div id="masterProducts" class="stack"></div>
+          <div class="section-head">
+            <h3>控除・補助マスター</h3>
+            <button id="addMasterAdjustmentBtn">追加</button>
+          </div>
+          <div id="masterAdjustments" class="stack compact"></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="productTemplate">
+      <div class="item-card product-card">
+        <div class="card-top">
+          <select class="product-name"></select>
+          <button class="remove-btn" aria-label="削除">削除</button>
+        </div>
+        <div class="grid two">
+          <label>規格<select class="product-spec"></select></label>
+          <label>数量<input class="product-qty" type="number" inputmode="decimal" min="0" step="1" /></label>
+          <label>販売単価<input class="product-price" type="number" inputmode="decimal" min="0" step="1" /></label>
+          <label>仕入単価<input class="product-cost" type="number" inputmode="decimal" min="0" step="1" /></label>
+        </div>
+      </div>
+    </template>
+
+    <template id="adjustmentTemplate">
+      <div class="item-card adjustment-card">
+        <div class="grid adjustment-grid">
+          <label>項目<input class="adjustment-name" /></label>
+          <label>方式<select class="adjustment-method"><option value="amount">金額</option><option value="rate">売上%</option><option value="perUnit">数量単価</option><option value="formula">式</option></select></label>
+          <label>値<input class="adjustment-value" type="number" inputmode="decimal" step="0.01" /></label>
+          <label>式<input class="adjustment-formula" /></label>
+          <button class="remove-btn" aria-label="削除">削除</button>
+        </div>
+      </div>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

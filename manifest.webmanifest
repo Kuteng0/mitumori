@@ -1,0 +1,9 @@
+{
+  "name": "農産品TikTok販売 利益見積計算",
+  "short_name": "農産見積",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f4ec",
+  "theme_color": "#176b5b",
+  "icons": []
+}
