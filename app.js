@@ -40,12 +40,12 @@ const defaultState = {
       name: "標準テンプレート",
       quoteNo: "QT-2026-001",
       quoteDate: "",
-      clientName: "B商 御中",
+      clientName: "＊＊株式会社 御中",
       issuerName: "農産品サプライヤー",
       quoteTitle: "TikTokライブ販売向け農産品供給見積",
       validUntil: "",
       paymentTerms: "月末締め翌月末払い",
-      deliveryTerms: "国内指定倉庫またはB商指定住所納品",
+      deliveryTerms: "指定倉庫または指定住所納品",
       issuerContact: "住所・電話・メールを入力",
       quoteNotes: "価格、手数料、補助条件はライブ販売条件と実績により調整可能です。",
       currency: "JPY",
@@ -124,7 +124,7 @@ const els = {
   summaryRows: document.getElementById("summaryRows"),
   adjustmentRows: document.getElementById("adjustmentRows"),
   previewRows: document.getElementById("previewRows"),
-  previewFeeNames: document.getElementById("previewFeeNames"),
+  previewFeeRows: document.getElementById("previewFeeRows"),
   quoteDoc: document.getElementById("quoteDoc"),
   quoteLockToggle: document.getElementById("quoteLockToggle"),
   masterProducts: document.getElementById("masterProducts"),
@@ -168,6 +168,9 @@ function fillMissingQuoteFields(template) {
   ["quoteTitle", "validUntil", "paymentTerms", "deliveryTerms", "issuerContact", "quoteNotes", "taxRate", "productProfitFormula", "netProfitFormula"].forEach((field) => {
     if (template[field] === undefined || template[field] === null) template[field] = defaults[field] || "";
   });
+  const oldClientPrefix = String.fromCharCode(66, 0x5546);
+  if (!template.clientName || template.clientName === `${oldClientPrefix} 御中`) template.clientName = defaults.clientName;
+  if (!template.deliveryTerms || template.deliveryTerms.indexOf(oldClientPrefix) >= 0) template.deliveryTerms = defaults.deliveryTerms;
 }
 
 function mergeByName(target, additions) {
@@ -381,8 +384,6 @@ function renderResults() {
 }
 
 function renderTopPreviewRows(result) {
-  const feeNames = result.feeDetails.length ? result.feeDetails.map((item) => item.name).join(" / ") : "-";
-  els.previewFeeNames.textContent = `控除: ${feeNames}`;
   els.previewRows.innerHTML = result.products.map((product) => {
     const share = result.revenue ? product.subtotal / result.revenue : 0;
     const allocatedFees = result.fees * share;
@@ -392,21 +393,29 @@ function renderTopPreviewRows(result) {
     const margin = product.subtotal ? profit / product.subtotal * 100 : 0;
     return `
       <div class="preview-row">
-        <div class="preview-product">
+        <div class="preview-product" data-label="商品">
           <strong>${escapeHtml(product.name)}</strong>
           <span>${escapeHtml(product.spec)}</span>
         </div>
-        <div><span>数量</span><strong>${product.qty}</strong></div>
-        <div><span>進貨価</span><strong>${money(product.cost / (product.qty || 1))}</strong></div>
-        <div><span>售价</span><strong>${money(product.price)}</strong></div>
-        <div><span>売上</span><strong>${money(product.subtotal)}</strong></div>
-        <div><span>扣除</span><strong>-${money(allocatedFees)}</strong></div>
-        <div><span>補助</span><strong>${money(allocatedSubsidies)}</strong></div>
-        <div><span>利益</span><strong>${money(profit)}</strong></div>
-        <div><span>利益率</span><strong>${margin.toFixed(1)}%</strong></div>
+        <div data-label="数量"><span>数量</span><strong>${product.qty}</strong></div>
+        <div data-label="進貨単価"><span>進貨単価</span><strong>${money(product.cost / (product.qty || 1))}</strong></div>
+        <div data-label="進貨合計"><span>進貨合計</span><strong>${money(product.cost)}</strong></div>
+        <div data-label="售价"><span>售价</span><strong>${money(product.price)}</strong></div>
+        <div data-label="売上"><span>売上</span><strong>${money(product.subtotal)}</strong></div>
+        <div data-label="扣除"><span>扣除</span><strong>-${money(allocatedFees)}</strong></div>
+        <div data-label="補助"><span>補助</span><strong>${money(allocatedSubsidies)}</strong></div>
+        <div data-label="利益"><span>利益</span><strong>${money(profit)}</strong></div>
+        <div data-label="利益率"><span>利益率</span><strong>${margin.toFixed(1)}%</strong></div>
       </div>
     `;
   }).join("");
+  els.previewFeeRows.innerHTML = result.feeDetails.map((item) => `
+    <div class="preview-row preview-fee-row">
+      <div data-label="扣除项目"><span>扣除项目</span><strong>${escapeHtml(item.name)}</strong></div>
+      <div data-label="计算方式"><span>计算方式</span><strong>${escapeHtml(methodLabel(item))}</strong></div>
+      <div data-label="金额"><span>金额</span><strong>-${money(item.amount)}</strong></div>
+    </div>
+  `).join("") || `<div class="preview-row preview-fee-row"><div data-label="扣除项目"><span>扣除项目</span><strong>なし</strong></div></div>`;
 }
 
 function renderQuote(result) {
@@ -421,20 +430,26 @@ function renderQuote(result) {
   const quoteTax = quoteSubtotal * number(current.taxRate) / 100;
   const quoteTotal = quoteSubtotal + quoteTax;
   els.quoteDoc.innerHTML = `
-    <h2>見積書</h2>
+    <h2>御見積書</h2>
+    <div class="quote-no-line">
+      <span>見積番号: ${escapeHtml(current.quoteNo || "")}</span>
+      <span>発行日: ${escapeHtml(current.quoteDate || "")}</span>
+    </div>
     <div class="quote-meta">
       <div>
-        <p><strong>${escapeHtml(current.clientName || "")}</strong></p>
-        <p>下記の通りお見積り申し上げます。</p>
+        <p class="quote-client"><strong>${escapeHtml(current.clientName || "")}</strong></p>
+        <p>下記の通り御見積申し上げます。</p>
         <p>件名: ${escapeHtml(current.quoteTitle || "")}</p>
-      </div>
-      <div>
-        <p>見積番号: ${escapeHtml(current.quoteNo || "")}</p>
-        <p>発行日: ${escapeHtml(current.quoteDate || "")}</p>
         <p>有効期限: ${escapeHtml(current.validUntil || "")}</p>
-        <p>${escapeHtml(current.issuerName || "")}</p>
+      </div>
+      <div class="quote-issuer">
+        <p><strong>${escapeHtml(current.issuerName || "")}</strong></p>
         <p>${escapeHtml(current.issuerContact || "")}</p>
       </div>
+    </div>
+    <div class="quote-grand-total">
+      <span>御見積金額</span>
+      <strong>${money(quoteTotal)}</strong>
     </div>
     <table>
       <thead><tr><th>品名</th><th>規格・サイズ</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
