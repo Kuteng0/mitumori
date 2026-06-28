@@ -60,12 +60,12 @@ const defaultState = {
         { name: "TikTok販売手数料", method: "rate", value: 6, formula: "revenue * 0.06" },
         { name: "決済手数料", method: "rate", value: 3.6, formula: "revenue * 0.036" },
         { name: "国内送料", method: "perUnit", value: 850, formula: "qty * 850" },
-        { name: "梱包資材", method: "perUnit", value: 120, formula: "qty * 120" }
+        { name: "クール便追加費", method: "perUnit", value: 330, formula: "qty * 330" },
+        { name: "梱包資材費", method: "perUnit", value: 120, formula: "qty * 120" },
+        { name: "包装・配送ロス引当", method: "rate", value: 2, formula: "revenue * 0.02" },
+        { name: "返品・破損引当", method: "rate", value: 2, formula: "revenue * 0.02" }
       ],
-      subsidies: [
-        { name: "地域産品販促補助", method: "rate", value: 5, formula: "revenue * 0.05" },
-        { name: "メーカー協賛金", method: "amount", value: 3000, formula: "3000" }
-      ]
+      subsidies: []
     }
   ]
 };
@@ -102,6 +102,7 @@ const supplementalAdjustments = [
   { name: "常温送料", type: "fee", method: "perUnit", value: 850, formula: "qty * 850" },
   { name: "クール便追加費", type: "fee", method: "perUnit", value: 330, formula: "qty * 330" },
   { name: "梱包資材費", type: "fee", method: "perUnit", value: 120, formula: "qty * 120" },
+  { name: "包装・配送ロス引当", type: "fee", method: "rate", value: 2, formula: "revenue * 0.02" },
   { name: "倉庫出荷作業費", type: "fee", method: "perUnit", value: 180, formula: "qty * 180" },
   { name: "返品・破損引当", type: "fee", method: "rate", value: 2, formula: "revenue * 0.02" },
   { name: "振込手数料", type: "fee", method: "amount", value: 440, formula: "440" },
@@ -122,6 +123,8 @@ const els = {
   subsidyList: document.getElementById("subsidyList"),
   summaryRows: document.getElementById("summaryRows"),
   adjustmentRows: document.getElementById("adjustmentRows"),
+  previewRows: document.getElementById("previewRows"),
+  previewFeeNames: document.getElementById("previewFeeNames"),
   quoteDoc: document.getElementById("quoteDoc"),
   quoteLockToggle: document.getElementById("quoteLockToggle"),
   masterProducts: document.getElementById("masterProducts"),
@@ -154,8 +157,8 @@ function normalizeState(nextState) {
   if (standard) {
     if (!standard.fees) standard.fees = [];
     if (!standard.subsidies) standard.subsidies = [];
-    mergeByName(standard.fees, supplementalAdjustments.filter((item) => item.type === "fee").slice(0, 9).map(stripType));
-    mergeByName(standard.subsidies, supplementalAdjustments.filter((item) => item.type === "subsidy").map(stripType));
+    mergeByName(standard.fees, defaultState.templates[0].fees);
+    standard.subsidies = [];
   }
   return nextState;
 }
@@ -349,11 +352,10 @@ function renderResults() {
   document.getElementById("previewCost").textContent = money(result.cost);
   document.getElementById("previewFees").textContent = money(result.fees);
   document.getElementById("previewSubsidies").textContent = money(result.subsidies);
-  document.getElementById("previewTax").textContent = money(result.tax);
   document.getElementById("previewProfit").textContent = money(result.netProfit);
   document.getElementById("previewMargin").textContent = `${result.margin.toFixed(1)}%`;
   document.getElementById("previewProductCount").textContent = String(result.products.length);
-  document.getElementById("previewQty").textContent = String(result.qty);
+  renderTopPreviewRows(result);
   els.summaryRows.innerHTML = result.products.map((product) => `
     <tr>
       <td data-label="商品">${escapeHtml(product.name)}</td>
@@ -375,6 +377,35 @@ function renderResults() {
     </tr>
   `).join("");
   renderQuote(result);
+}
+
+function renderTopPreviewRows(result) {
+  const feeNames = result.feeDetails.length ? result.feeDetails.map((item) => item.name).join(" / ") : "-";
+  els.previewFeeNames.textContent = `控除: ${feeNames}`;
+  els.previewRows.innerHTML = result.products.map((product) => {
+    const share = result.revenue ? product.subtotal / result.revenue : 0;
+    const allocatedFees = result.fees * share;
+    const allocatedSubsidies = result.subsidies * share;
+    const allocatedTax = result.tax * share;
+    const profit = product.subtotal - product.cost - allocatedFees + allocatedSubsidies - allocatedTax;
+    const margin = product.subtotal ? profit / product.subtotal * 100 : 0;
+    return `
+      <div class="preview-row">
+        <div class="preview-product">
+          <strong>${escapeHtml(product.name)}</strong>
+          <span>${escapeHtml(product.spec)}</span>
+        </div>
+        <div><span>数量</span><strong>${product.qty}</strong></div>
+        <div><span>進貨価</span><strong>${money(product.cost / (product.qty || 1))}</strong></div>
+        <div><span>售价</span><strong>${money(product.price)}</strong></div>
+        <div><span>売上</span><strong>${money(product.subtotal)}</strong></div>
+        <div><span>扣除</span><strong>-${money(allocatedFees)}</strong></div>
+        <div><span>補助</span><strong>${money(allocatedSubsidies)}</strong></div>
+        <div><span>利益</span><strong>${money(profit)}</strong></div>
+        <div><span>利益率</span><strong>${margin.toFixed(1)}%</strong></div>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderQuote(result) {
