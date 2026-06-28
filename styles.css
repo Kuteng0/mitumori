@@ -686,7 +686,7 @@ th:nth-child(2), td:nth-child(2) {
     background: #fff;
   }
 
-  .app-header, .controls-panel, .tabs, #summaryTab, #mastersTab, .quote-toolbar {
+  .app-header, .top-preview, .controls-panel, .tabs, #summaryTab, #mastersTab, .quote-toolbar {
     display: none !important;
   }
 

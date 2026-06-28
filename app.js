@@ -417,8 +417,9 @@ function renderQuote(result) {
   }
   if (document.activeElement === els.quoteDoc) return;
   els.quoteLockToggle.checked = false;
-  const feeRows = result.feeDetails.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>-${money(item.amount)}</td></tr>`).join("");
-  const subsidyRows = result.subsidyDetails.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td colspan="3">${escapeHtml(methodLabel(item))}</td><td>${money(item.amount)}</td></tr>`).join("");
+  const quoteSubtotal = result.products.reduce((sum, product) => sum + product.subtotal, 0);
+  const quoteTax = quoteSubtotal * number(current.taxRate) / 100;
+  const quoteTotal = quoteSubtotal + quoteTax;
   els.quoteDoc.innerHTML = `
     <h2>見積書</h2>
     <div class="quote-meta">
@@ -436,11 +437,9 @@ function renderQuote(result) {
       </div>
     </div>
     <table>
-      <thead><tr><th>品名</th><th>規格</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
+      <thead><tr><th>品名</th><th>規格・サイズ</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
       <tbody>
         ${result.products.map((product) => `<tr><td>${escapeHtml(product.name)}</td><td>${escapeHtml(product.spec)}</td><td>${product.qty}</td><td>${money(product.price)}</td><td>${money(product.subtotal)}</td></tr>`).join("")}
-        ${feeRows}
-        ${subsidyRows}
       </tbody>
     </table>
     <div class="quote-terms">
@@ -449,11 +448,9 @@ function renderQuote(result) {
     </div>
     <table class="quote-total">
       <tbody>
-        <tr><th>売上小計</th><td>${money(result.revenue)}</td></tr>
-        <tr><th>控除合計</th><td>-${money(result.fees)}</td></tr>
-        <tr><th>補助合計</th><td>${money(result.subsidies)}</td></tr>
-        <tr><th>消費税参考</th><td>${money(result.tax)}</td></tr>
-        <tr><th>B商見込利益</th><td><strong>${money(result.netProfit)}</strong></td></tr>
+        <tr><th>小計</th><td>${money(quoteSubtotal)}</td></tr>
+        <tr><th>消費税 (${number(current.taxRate)}%)</th><td>${money(quoteTax)}</td></tr>
+        <tr><th>見積合計</th><td><strong>${money(quoteTotal)}</strong></td></tr>
       </tbody>
     </table>
     <p>備考: ${escapeHtml(current.quoteNotes || "")}</p>
