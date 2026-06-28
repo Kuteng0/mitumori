@@ -345,13 +345,22 @@ function renderResults() {
   document.getElementById("kpiSubsidies").textContent = money(result.subsidies);
   document.getElementById("kpiProfit").textContent = money(result.netProfit);
   document.getElementById("kpiMargin").textContent = `${result.margin.toFixed(1)}%`;
+  document.getElementById("previewRevenue").textContent = money(result.revenue);
+  document.getElementById("previewCost").textContent = money(result.cost);
+  document.getElementById("previewFees").textContent = money(result.fees);
+  document.getElementById("previewSubsidies").textContent = money(result.subsidies);
+  document.getElementById("previewTax").textContent = money(result.tax);
+  document.getElementById("previewProfit").textContent = money(result.netProfit);
+  document.getElementById("previewMargin").textContent = `${result.margin.toFixed(1)}%`;
+  document.getElementById("previewProductCount").textContent = String(result.products.length);
+  document.getElementById("previewQty").textContent = String(result.qty);
   els.summaryRows.innerHTML = result.products.map((product) => `
     <tr>
-      <td>${escapeHtml(product.name)}</td>
-      <td>${escapeHtml(product.spec)}</td>
-      <td>${product.qty}</td>
-      <td>${money(product.subtotal)}</td>
-      <td>${money(product.profit)}</td>
+      <td data-label="商品">${escapeHtml(product.name)}</td>
+      <td data-label="規格">${escapeHtml(product.spec)}</td>
+      <td data-label="数量">${product.qty}</td>
+      <td data-label="売上">${money(product.subtotal)}</td>
+      <td data-label="粗利">${money(product.profit)}</td>
     </tr>
   `).join("");
   els.adjustmentRows.innerHTML = [
@@ -359,10 +368,10 @@ function renderResults() {
     ...result.subsidyDetails.map((item) => ({ ...item, typeLabel: "補助", signedAmount: item.amount }))
   ].map((item) => `
     <tr>
-      <td>${escapeHtml(item.typeLabel)}</td>
-      <td>${escapeHtml(item.name)}</td>
-      <td>${escapeHtml(methodLabel(item))}</td>
-      <td>${money(item.signedAmount)}</td>
+      <td data-label="区分">${escapeHtml(item.typeLabel)}</td>
+      <td data-label="項目">${escapeHtml(item.name)}</td>
+      <td data-label="方式">${escapeHtml(methodLabel(item))}</td>
+      <td data-label="金額">${money(item.signedAmount)}</td>
     </tr>
   `).join("");
   renderQuote(result);
